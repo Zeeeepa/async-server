@@ -6,6 +6,8 @@ import traceback
 from datetime import datetime, timezone
 
 import aiofiles
+from claude_code_sdk import ProcessError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from src.agent import ClaudeCodeAgent, OutputFormatter
 from src.clients import get_firestore_client, get_github_client
@@ -13,7 +15,7 @@ from src.model.agent.response import GeneratedSubtasks
 from src.model.app import Org
 from src.model.app.project import Project
 from src.model.app.task import PullRequest, Subtask, SubtaskStatus, Task, TaskStatus
-from src.prompt.execute_task_prompt import EXECUTE_TASK_PROMPT, EXECUTE_TASK_SYSTEM_PROMPT, REMOVE_COMMENTS_PROMPT
+from src.prompt.execute_task_prompt import EXECUTE_TASK_PROMPT, EXECUTE_TASK_SYSTEM_PROMPT
 from src.prompt.generate_subtasks_prompt import GENERATE_SUBTASKS_PROMPT
 from src.utils.bootstrap_utils import bootstrap_application_async, create_bootstrap_config
 from src.utils.diff_utils import generate_diff_files_async
@@ -35,7 +37,7 @@ async def execute_task_async(org_id: str, task_id: str, is_dev: bool):
     try:
         firestore_client = get_firestore_client()
         await firestore_client.update_task_async(
-            org_id, task_id, status=TaskStatus.EXECUTING, last_updated=datetime.now(timezone.utc)
+            org_id, task_id, status=TaskStatus.EXECUTING, updated_at=datetime.now(timezone.utc)
         )
 
         # clone repo
@@ -55,14 +57,14 @@ async def execute_task_async(org_id: str, task_id: str, is_dev: bool):
         # execute the tasks
         branch_name = generate_branch_name(task.title)
         create_and_checkout_branch(repo_directory, branch_name)
-
         subtasks = await _execute_subtasks_async(org, project, task, branch_name, repo_directory, is_dev)
 
         # raise a PR
         pull_request = await _raise_pull_request_async(org, project, task, subtasks, branch_name)
         await firestore_client.create_pull_request_async(pull_request)
 
-        diff_files = await generate_diff_files_async(repo_directory, subtasks[-1].pull_request_commit, base_commit)
+        latest_commit = get_current_commit(repo_directory)
+        diff_files = await generate_diff_files_async(repo_directory, latest_commit, base_commit)
         await get_firestore_client().update_task_async(
             org_id,
             task.id,
@@ -70,14 +72,14 @@ async def execute_task_async(org_id: str, task_id: str, is_dev: bool):
             pull_request_url=pull_request.pull_request_url,
             pull_request_branch=branch_name,
             status=TaskStatus.PENDING_REVIEW,
-            last_updated=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         logger.info(f"Finished executing task: {task_id}")
     except Exception:
         traceback.print_exc()
         await firestore_client.update_task_async(
-            org_id, task_id, status=TaskStatus.FAILED, last_updated=datetime.now(timezone.utc)
+            org_id, task_id, status=TaskStatus.FAILED, updated_at=datetime.now(timezone.utc)
         )
         sys.exit(1)
     finally:
@@ -93,7 +95,8 @@ async def _generate_claude_md_async(repo_directory: str, is_dev: bool):
         raise
 
 
-async def _generate_subtasks_async(org_id: str, task: Task, repo_directory: str, is_dev: bool) -> list[str]:
+@retry(reraise=True, stop=stop_after_attempt(3), retry=retry_if_exception_type((ProcessError, FileNotFoundError)))
+async def _generate_subtasks_async(org_id: str, task: Task, repo_directory: str, is_dev: bool):
     try:
         agent = ClaudeCodeAgent(
             repo_directory,
@@ -109,9 +112,8 @@ async def _generate_subtasks_async(org_id: str, task: Task, repo_directory: str,
             result = await formatter.format_output_async(output, GeneratedSubtasks)
 
         firestore_client = get_firestore_client()
-        for i, generated_subtask in enumerate(result.subtasks):
+        for generated_subtask in result.subtasks:
             subtask = Subtask(
-                order=i + 1,
                 title=generated_subtask.title,
                 steps=generated_subtask.steps,
             )
@@ -123,14 +125,8 @@ async def _generate_subtasks_async(org_id: str, task: Task, repo_directory: str,
 
 def _get_generate_subtasks_user_prompt(task: Task) -> str:
     prompt_components = [GENERATE_SUBTASKS_PROMPT]
-    prompt_components.append(f"- Overview: {task.overview}")
+    prompt_components.append(f"- Description: {task.body}")
     prompt_components.append(f"- Requirements: {task.get_requirements()}")
-
-    if task.questions and task.answers:
-        qa_pairs = []
-        for question, answer in zip(task.questions, task.answers):
-            qa_pairs.append(f"Q: {question.question} A: {answer}")
-        prompt_components.append(f"- Questions and answers:\n{'\n'.join(qa_pairs)}")
     return "\n".join(prompt_components)
 
 
@@ -148,10 +144,9 @@ async def _execute_subtasks_async(
                 task_id=task.id,
                 subtask_id=subtask.id,
                 status=SubtaskStatus.IN_PROGRESS,
-                last_updated=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             await agent.run_async(prompt=_get_execute_task_prompt(task, subtask, i + 1, completed_commits))
-            await agent.run_async(prompt=REMOVE_COMMENTS_PROMPT)
 
             commit_hash = add_and_commit_changes(repo_directory, subtask.title)
             if commit_hash:
@@ -167,7 +162,7 @@ async def _execute_subtasks_async(
                 task_id=task.id,
                 subtask_id=subtask.id,
                 status=SubtaskStatus.FAILED,
-                last_updated=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             raise
 
@@ -189,7 +184,7 @@ async def _complete_subtask_async(
         pull_request_commit=commit_hash or "",
         diff_files=[diff_file.model_dump() for diff_file in diff_files],
         status=SubtaskStatus.COMPLETED,
-        last_updated=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
 
 
@@ -201,7 +196,7 @@ def _get_execute_task_prompt(task: Task, subtask: Subtask, subtask_number: int, 
         completed_subtask_commits = "No subtasks have been implemented yet."
     return EXECUTE_TASK_PROMPT.format(
         task_title=task.title,
-        task_overview=task.overview,
+        task_body=task.body,
         task_requirements=task.get_requirements(),
         subtask_number=subtask_number,
         completed_subtask_commits=completed_subtask_commits,
@@ -227,12 +222,14 @@ async def _raise_pull_request_async(
     access_token = await github_client.generate_app_access_token_async(org.github_installation_id)
 
     pr_body = (
-        f"{task.overview}\n\n"
+        f"{task.body}\n\n"
         f"## Requirements\n{task.get_requirements()}\n\n"
-        f"## Implemented Tasks\n{'\n'.join([f'- {subtask.title}' for subtask in subtasks])}"
+        f"## Implemented Tasks\n{'\n'.join([f'- {subtask.title}' for subtask in subtasks])}\n\n"
+        f"Fixes #{task.github_issue_number}\n\n"
+        "Generated with [Async](https://www.async.build)"
     )
     pull_request = await github_client.create_pull_request_async(
-        access_token, project.repo, task.title, pr_body, branch_name
+        access_token, project.repo, task.title, pr_body, branch_name, project.default_branch
     )
 
     return PullRequest(
@@ -259,6 +256,6 @@ if __name__ == "__main__":
         main(
             org_id=os.getenv("ORG_ID"),
             task_id=os.getenv("TASK_ID"),
-            is_dev=os.getenv("IS_DEV", "False") == "True",
+            is_dev=True,
         )
     )

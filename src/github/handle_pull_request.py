@@ -51,15 +51,18 @@ async def _handle_synchronize_async(pull_request: PullRequest, commit_hash: str)
         project = await firestore_client.get_project_async(pull_request.org_id, pull_request.project_id)
         task_directory, repo_directory = await setup_ephemeral_repo_async(org.github_installation_id, project.repo)
 
+        commit_message = get_commit_message(repo_directory, commit_hash)
+        if commit_message == "Address user feedback":
+            # HACK: this is to not double create subtask when revise ran locally
+            return
+
         task = await firestore_client.get_task_async(pull_request.org_id, pull_request.task_id)
         checkout_branch(repo_directory, task.pull_request_branch)
 
         base_commit = get_parent_commit(repo_directory, commit_hash)
         diff_files = await generate_diff_files_async(repo_directory, commit_hash, base_commit)
-        subtasks = await firestore_client.get_subtasks_async(pull_request.org_id, pull_request.task_id)
         subtask = Subtask(
-            title=get_commit_message(repo_directory, commit_hash),
-            order=len(subtasks) + 1,
+            title=commit_message,
             steps=[],
             diff_files=diff_files,
             pull_request_commit=commit_hash,
@@ -72,7 +75,7 @@ async def _handle_synchronize_async(pull_request: PullRequest, commit_hash: str)
             org_id=pull_request.org_id,
             task_id=pull_request.task_id,
             diff_files=[diff_file.model_dump() for diff_file in diff_files],
-            last_updated=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
     except Exception:
         logger.error(f"Failed to handle pull_request::synchronize for: {pull_request}")
@@ -87,7 +90,7 @@ async def _handle_closed_async(
 ):
     status = TaskStatus.COMPLETED if merged else TaskStatus.CANCELLED
     await get_firestore_client().update_task_async(
-        org_id, task_id, status=status, last_updated=datetime.now(timezone.utc)
+        org_id, task_id, status=status, updated_at=datetime.now(timezone.utc)
     )
 
     github_client = get_github_client()

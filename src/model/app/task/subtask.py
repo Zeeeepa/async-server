@@ -10,6 +10,7 @@ from src.model.app.task.diff import DiffComment, DiffFile
 class SubtaskStatus(str, Enum):
     CREATED = "created"
     IN_PROGRESS = "inProgress"
+    SKIPPED = "skipped"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -17,7 +18,6 @@ class SubtaskStatus(str, Enum):
 
 class Subtask(BaseModel):
     id: str = Field(default_factory=generate_id)
-    order: int
     title: str
     steps: list[str]
 
@@ -26,7 +26,8 @@ class Subtask(BaseModel):
     pull_request_commit: str = ""
 
     status: SubtaskStatus = SubtaskStatus.CREATED
-    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def get_description(self) -> str:
         if not self.steps:

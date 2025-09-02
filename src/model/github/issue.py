@@ -10,7 +10,7 @@ class Issue(BaseModel):
     id: int
     number: int
     title: str
-    body: str
+    body: Optional[str]
     user: Account
     assignee: Optional[Account]
     created_at: datetime

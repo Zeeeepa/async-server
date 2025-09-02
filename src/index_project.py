@@ -92,6 +92,6 @@ if __name__ == "__main__":
         main(
             org_id=os.getenv("ORG_ID"),
             project_id=os.getenv("PROJECT_ID"),
-            is_dev=os.getenv("IS_DEV", "False") == "True",
+            is_dev=True,
         )
     )

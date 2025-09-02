@@ -7,13 +7,11 @@ from src.api.task import (
     ScheduleJobRequest,
     ScheduleJobResponse,
 )
-from src.api.task.schedule_job_api import ResearchTaskJobRequest
 from src.clients import get_firestore_client, get_gcr_client
 from src.execute_task import execute_task_async
 from src.index_project import index_project_async
 from src.model.app.project import Project
 from src.payment.payment_utils import decrement_credit_async
-from src.research_task import research_task_async
 from src.revise_task import revise_task_async
 
 router = APIRouter()
@@ -28,13 +26,6 @@ async def schedule_job_async(request: ScheduleJobRequest, background_tasks: Back
                     index_project_async,
                     request.org_id,
                     request.project_id,
-                    request.is_dev,
-                )
-            case ResearchTaskJobRequest():
-                background_tasks.add_task(
-                    research_task_async,
-                    request.org_id,
-                    request.task_id,
                     request.is_dev,
                 )
             case ExecuteTaskJobRequest():

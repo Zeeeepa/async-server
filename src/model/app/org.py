@@ -30,7 +30,7 @@ class Org(BaseModel):
 
     # Payment
     payment_plan: PaymentPlan = PaymentPlan.FREE
-    credits: int = 3
+    credits: int = 10
 
     # Date
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

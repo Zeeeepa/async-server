@@ -3,7 +3,6 @@ from google.cloud.run_v2.types import CancelExecutionRequest, EnvVar, GetExecuti
 from src.api.task import (
     ExecuteTaskJobRequest,
     IndexProjectJobRequest,
-    ResearchTaskJobRequest,
     ReviseTaskJobRequest,
     ScheduleJobRequest,
 )
@@ -25,8 +24,6 @@ class GcrClient:
         match request:
             case IndexProjectJobRequest():
                 job_request = self._get_index_project_job_request(request, languages)
-            case ResearchTaskJobRequest():
-                job_request = self._get_research_task_job_request(request, languages)
             case ExecuteTaskJobRequest():
                 job_request = self._get_execute_task_job_request(request, languages)
             case ReviseTaskJobRequest():
@@ -55,25 +52,6 @@ class GcrClient:
                             EnvVar(name="COMMAND_MODULE", value="src.index_project"),
                             EnvVar(name="ORG_ID", value=request.org_id),
                             EnvVar(name="PROJECT_ID", value=request.project_id),
-                            EnvVar(name="IS_DEV", value=str(request.is_dev)),
-                        ]
-                    )
-                ]
-            ),
-        )
-
-    def _get_research_task_job_request(
-        self, request: ResearchTaskJobRequest, languages: list[Language]
-    ) -> RunJobRequest:
-        return RunJobRequest(
-            name=self._get_job_endpoint(languages),
-            overrides=RunJobRequest.Overrides(
-                container_overrides=[
-                    RunJobRequest.Overrides.ContainerOverride(
-                        env=[
-                            EnvVar(name="COMMAND_MODULE", value="src.research_task"),
-                            EnvVar(name="ORG_ID", value=request.org_id),
-                            EnvVar(name="TASK_ID", value=request.task_id),
                             EnvVar(name="IS_DEV", value=str(request.is_dev)),
                         ]
                     )

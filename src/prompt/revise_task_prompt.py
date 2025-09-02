@@ -1,10 +1,7 @@
 REVISE_TASK_PROMPT = """
 You are working on revising the implementation for the task: {task_title}
 
-## Task Overview
-{task_overview}
-
-## Task Requirements  
+## Task Requirements
 {task_requirements}
 
 ## User Feedback to Address

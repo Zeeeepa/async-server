@@ -7,7 +7,8 @@ from langgraph.prebuilt.chat_agent_executor import StructuredResponseSchema
 from langgraph.prebuilt.tool_node import ToolNode
 
 from src.agent.agent_metadata import AgentMetadata
-from src.model.agent.response import TaskSummary
+from src.model.agent.response import TaskRequirements
+from src.prompt.summarize_requirements_prompt import SUMMARIZE_REQUIREMENTS_PROMPT
 
 
 class SummaryAgentMetadata(AgentMetadata):
@@ -28,10 +29,10 @@ class SummaryAgentMetadata(AgentMetadata):
         return ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 
     def _get_system_prompt(self) -> str:
-        return "Please provide a task overview and list of requirements based on your extensive research and user interactions."
+        return SUMMARIZE_REQUIREMENTS_PROMPT
 
     def _get_tools(self) -> Union[Sequence[Union[BaseTool, Callable]], ToolNode]:
         return []
 
     def _get_response_format(self) -> Optional[StructuredResponseSchema]:
-        return TaskSummary
+        return TaskRequirements

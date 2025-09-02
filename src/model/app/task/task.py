@@ -23,6 +23,7 @@ class TaskComment(BaseModel):
     Comments from the ingested TaskSource, e.g., Linear / GitHub comments
     """
 
+    id: int
     author: str
     body: str
     created_at: datetime
@@ -30,9 +31,6 @@ class TaskComment(BaseModel):
 
 class TaskStatus(str, Enum):
     CREATED = "created"
-    RESEARCHING = "researching"
-    PENDING_FEEDBACK = "pendingFeedback"
-    READY = "ready"
     EXECUTING = "executing"
     PENDING_REVIEW = "pendingReview"
     COMPLETED = "completed"
@@ -78,7 +76,7 @@ class Task(BaseModel):
 
     # datetime fields
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def get_requirements(self) -> str:
         if not self.requirements:

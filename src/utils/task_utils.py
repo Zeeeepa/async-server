@@ -1,9 +1,8 @@
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
-from src.model.agent.response import TaskSummary
+from src.model.agent.response import TaskRequirements
 from src.model.app.project.project import Project
-from src.prompt.summarize_chat_prompt import SUMMARIZE_CHAT_PROMPT
 
 
 async def find_matching_project(projects: list[Project], task_description: str) -> list[Project]:
@@ -52,17 +51,14 @@ async def generate_task_name_async(task_description: str) -> str:
     return response.output_text
 
 
-async def summarize_task_async(latest_message: str) -> TaskSummary:
-    open_ai_client = AsyncOpenAI()
-    prompt = SUMMARIZE_CHAT_PROMPT.format(requirements=latest_message)
-    response = await open_ai_client.responses.parse(
-        model="gpt-4.1-mini",
-        input=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-        text_format=TaskSummary,
-    )
-    return response.output_parsed
+def summarize_requirements(latest_message: str) -> TaskRequirements:
+    requirements = []
+    lines = latest_message.split("\n")
+
+    for line in lines:
+        if line.strip().startswith("- "):
+            requirement = line.strip()[2:].strip()
+            if requirement:
+                requirements.append(requirement)
+
+    return TaskRequirements(requirements=requirements)

@@ -37,7 +37,7 @@ async def revise_task_async(org_id: str, task_id: str, is_dev: bool):
             org_id=org_id,
             task_id=task_id,
             status=TaskStatus.EXECUTING,
-            last_updated=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         await _run_subtask_async(org, project, task, feedback_subtask, repo_directory, is_dev)
         feedback_subtask = await firestore_client.get_subtask_async(org_id, task_id, feedback_subtask.id)
@@ -77,7 +77,7 @@ async def _run_subtask_async(
             task_id=task.id,
             subtask_id=subtask.id,
             status=SubtaskStatus.IN_PROGRESS,
-            last_updated=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         agent = ClaudeCodeAgent(repo_directory, verbose=is_dev)
         await agent.run_async(prompt=_get_revise_prompt(task, subtask))
@@ -92,10 +92,10 @@ async def _run_subtask_async(
             org_id=org.id,
             task_id=task.id,
             subtask_id=subtask.id,
-            pull_request_commit=commit_hash,
+            pull_request_commit=commit_hash or "",
             diff_files=[diff_file.model_dump() for diff_file in diff_files],
             status=SubtaskStatus.COMPLETED,
-            last_updated=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
     except Exception:
         logger.error(f"Failed to run subtask: {subtask.id}")
@@ -104,7 +104,7 @@ async def _run_subtask_async(
             task_id=task.id,
             subtask_id=subtask.id,
             status=SubtaskStatus.FAILED,
-            last_updated=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         raise
 
@@ -112,7 +112,6 @@ async def _run_subtask_async(
 def _get_revise_prompt(task: Task, feedback_task: Subtask) -> str:
     return REVISE_TASK_PROMPT.format(
         task_title=task.title,
-        task_overview=task.overview,
         task_requirements=task.get_requirements(),
         feedback_task_description=feedback_task.get_description(),
     )
@@ -140,6 +139,6 @@ if __name__ == "__main__":
         main(
             org_id=os.getenv("ORG_ID"),
             task_id=os.getenv("TASK_ID"),
-            is_dev=os.getenv("IS_DEV", "False") == "True",
+            is_dev=True,
         )
     )

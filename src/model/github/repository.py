@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -15,3 +16,4 @@ class Repository(BaseModel):
     default_branch: str
     description: Optional[str]
     owner: Owner
+    updated_at: datetime

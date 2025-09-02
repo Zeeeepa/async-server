@@ -8,7 +8,7 @@ class PaymentPlan(str, Enum):
     @property
     def default_credits(self) -> int:
         credit_map = {
-            PaymentPlan.FREE: 3,
+            PaymentPlan.FREE: 10,
             PaymentPlan.STANDARD: 50,
         }
         return credit_map[self]

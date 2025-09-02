@@ -21,7 +21,7 @@ def generate_branch_name(task_title: str, prefix: str = BRANCH_NAME_PREFIX, max_
 
     if not branch_name:
         return f"{prefix}/{uuid.uuid4()}"
-    return f"{prefix}/{branch_name}"
+    return f"{prefix}/{branch_name}-{str(uuid.uuid4())[:8]}"
 
 
 def create_and_checkout_branch(repo_directory: str, branch_name: str):

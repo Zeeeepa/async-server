@@ -187,6 +187,60 @@ class GithubClient:
                 yield IssueComment(**issue_comment_json)
             url = self._get_next_url(response.headers.get("link"))
 
+    async def create_issue_async(
+        self,
+        access_token: str,
+        repo_full_name: str,
+        title: str,
+        body: str,
+        assignee: str,
+    ) -> Issue:
+        headers = self._get_base_headers(access_token)
+        url = f"https://api.github.com/repos/{repo_full_name}/issues"
+        data = {
+            "title": title,
+            "body": body,
+            "assignee": assignee,
+        }
+        response = await self._post_request_json_async(url, headers, data)
+        return Issue(**response.json())
+
+    async def create_issue_comment_async(
+        self,
+        access_token: str,
+        repo_full_name: str,
+        issue_number: int,
+        body: str,
+    ) -> IssueComment:
+        headers = self._get_base_headers(access_token)
+        url = f"https://api.github.com/repos/{repo_full_name}/issues/{issue_number}/comments"
+        data = {
+            "body": body,
+        }
+        response = await self._post_request_json_async(url, headers, data)
+        return IssueComment(**response.json())
+
+    async def update_issue_async(
+        self,
+        access_token: str,
+        repo_full_name: str,
+        issue_number: int,
+        state: str = None,
+        state_reason: str = None,
+        body: str = None,
+    ) -> Issue:
+        headers = self._get_base_headers(access_token)
+        url = f"https://api.github.com/repos/{repo_full_name}/issues/{issue_number}"
+        data = {}
+        if state:
+            data["state"] = state
+        if state_reason:
+            data["state_reason"] = state_reason
+        if body is not None:
+            data["body"] = body
+        response = await self._patch_request_json_async(url, headers, data)
+        return Issue(**response.json())
+
     # ========================================
     # PULL REQUEST OPERATIONS
     # ========================================
@@ -327,6 +381,13 @@ class GithubClient:
         self, url: str, headers: dict[str, str], data: dict[str, str] = {}
     ) -> httpx.Response:
         response = await self.client.put(url, headers=headers, json=data)
+        response.raise_for_status()
+        return response
+
+    async def _patch_request_json_async(
+        self, url: str, headers: dict[str, str], data: dict[str, str] = {}
+    ) -> httpx.Response:
+        response = await self.client.patch(url, headers=headers, json=data)
         response.raise_for_status()
         return response
 

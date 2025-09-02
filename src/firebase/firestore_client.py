@@ -51,6 +51,12 @@ class FirestoreClient:
         return User(**updated_user_doc.to_dict())
 
     @firestore_retry
+    async def add_user_subscribed_task_async(self, user_id: str, task_id: str) -> None:
+        user_col_ref = self.client.collection("users")
+        user_doc_ref = user_col_ref.document(user_id)
+        await user_doc_ref.update({"subscribed_tasks": firestore.ArrayUnion([task_id])})
+
+    @firestore_retry
     async def get_users_in_org_async(self, org_id: str) -> list[User]:
         user_col_ref = self.client.collection("users")
         user_docs = await user_col_ref.where("org_id", "==", org_id).get()
@@ -145,10 +151,24 @@ class FirestoreClient:
         return Task(**task_doc.to_dict())
 
     @firestore_retry
+    async def get_task_by_github_id_async(self, org_id: str, github_issue_id: int) -> Optional[Task]:
+        task_col_ref = self.client.collection(f"orgs/{org_id}/tasks")
+        task_docs = await task_col_ref.where("github_issue_id", "==", github_issue_id).get()
+        if not task_docs:
+            return None
+        return Task(**task_docs[0].to_dict())
+
+    @firestore_retry
     async def update_task_async(self, org_id: str, task_id: str, **kwargs) -> None:
         task_col_ref = self.client.collection(f"orgs/{org_id}/tasks")
         task_doc_ref = task_col_ref.document(task_id)
         await task_doc_ref.update(kwargs)
+
+    @firestore_retry
+    async def delete_task_async(self, org_id: str, task_id: str) -> None:
+        task_col_ref = self.client.collection(f"orgs/{org_id}/tasks")
+        task_doc_ref = task_col_ref.document(task_id)
+        await task_doc_ref.delete()
 
     # ========================================
     # SUBTASK OPERATIONS
@@ -171,13 +191,13 @@ class FirestoreClient:
     @firestore_retry
     async def get_subtasks_async(self, org_id: str, task_id: str) -> list[Subtask]:
         subtask_col_ref = self.client.collection(f"orgs/{org_id}/tasks/{task_id}/subtasks")
-        subtask_docs = await subtask_col_ref.order_by("order", direction=firestore.Query.ASCENDING).get()
+        subtask_docs = await subtask_col_ref.order_by("created_at", direction=firestore.Query.ASCENDING).get()
         return [Subtask(**subtask_doc.to_dict()) for subtask_doc in subtask_docs]
 
     @firestore_retry
     async def get_latest_subtask_async(self, org_id: str, task_id: str) -> Subtask:
         subtask_col_ref = self.client.collection(f"orgs/{org_id}/tasks/{task_id}/subtasks")
-        subtask_docs = await subtask_col_ref.order_by("order", direction=firestore.Query.DESCENDING).limit(1).get()
+        subtask_docs = await subtask_col_ref.order_by("created_at", direction=firestore.Query.DESCENDING).limit(1).get()
         return Subtask(**subtask_docs[0].to_dict())
 
     @firestore_retry
@@ -185,6 +205,12 @@ class FirestoreClient:
         subtask_col_ref = self.client.collection(f"orgs/{org_id}/tasks/{task_id}/subtasks")
         subtask_doc_ref = subtask_col_ref.document(subtask_id)
         await subtask_doc_ref.update(kwargs)
+
+    @firestore_retry
+    async def delete_subtask_async(self, org_id: str, task_id: str, subtask_id: str) -> None:
+        subtask_col_ref = self.client.collection(f"orgs/{org_id}/tasks/{task_id}/subtasks")
+        subtask_doc_ref = subtask_col_ref.document(subtask_id)
+        await subtask_doc_ref.delete()
 
     # ========================================
     # MESSAGE OPERATIONS

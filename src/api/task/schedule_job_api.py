@@ -12,13 +12,6 @@ class IndexProjectJobRequest(BaseModel):
     is_dev: bool
 
 
-class ResearchTaskJobRequest(BaseModel):
-    job_type: Literal[JobType.RESEARCH_TASK] = JobType.RESEARCH_TASK
-    org_id: str
-    task_id: str
-    is_dev: bool
-
-
 class ExecuteTaskJobRequest(BaseModel):
     job_type: Literal[JobType.EXECUTE_TASK] = JobType.EXECUTE_TASK
     org_id: str
@@ -33,7 +26,7 @@ class ReviseTaskJobRequest(BaseModel):
     is_dev: bool
 
 
-ScheduleJobRequest = Union[IndexProjectJobRequest, ResearchTaskJobRequest, ExecuteTaskJobRequest, ReviseTaskJobRequest]
+ScheduleJobRequest = Union[IndexProjectJobRequest, ExecuteTaskJobRequest, ReviseTaskJobRequest]
 
 
 class ScheduleJobResponse(BaseModel):

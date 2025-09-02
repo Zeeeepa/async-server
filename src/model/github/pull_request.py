@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from src.model.github.account import Account
@@ -13,7 +15,7 @@ class PullRequest(BaseModel):
     url: str
     html_url: str
     title: str
-    body: str
+    body: Optional[str]
     user: Account
     head: PullRequestCommit
     base: PullRequestCommit

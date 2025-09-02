@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status
 
 from src.api.github import ReviewAction, SubmitReviewRequest, SubmitReviewResponse
-from src.clients import get_async_client, get_firestore_client, get_github_client, get_secret_client
-from src.model.app.task import DiffComment, Subtask, Task, TaskStatus
+from src.clients import get_firestore_client, get_github_client, get_secret_client
+from src.model.app.task import DiffComment, Subtask, Task
 from src.model.app.task.subtask import SubtaskStatus
 from src.utils.git_utils import parse_pull_request_number
 
@@ -75,7 +75,7 @@ async def _update_tasks_with_diff_comments_async(
             task_id,
             subtask.id,
             diff_comments=[comment.model_dump() for comment in matching_comments],
-            last_updated=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         subtask.diff_comments = matching_comments
 
@@ -93,14 +93,16 @@ async def _handle_approve_async(access_token: str, task: Task, repo_full_name: s
 
 
 async def _handle_request_changes_async(org_id: str, task: Task, subtasks: list[Subtask], is_dev: bool):
-    await _create_feedback_subtask_async(org_id, task, subtasks)
-    await get_firestore_client().update_task_async(
-        org_id=org_id,
-        task_id=task.id,
-        status=TaskStatus.EXECUTING,
-        last_updated=datetime.now(timezone.utc),
-    )
-    await get_async_client().invoke_revise_task_job_async(org_id, task.id, is_dev)
+    # TODO: disabling remote revise for now
+    # await _create_feedback_subtask_async(org_id, task, subtasks)
+    # await get_firestore_client().update_task_async(
+    #     org_id=org_id,
+    #     task_id=task.id,
+    #     status=TaskStatus.EXECUTING,
+    #     updated_at=datetime.now(timezone.utc),
+    # )
+    # await get_async_client().invoke_revise_task_job_async(org_id, task.id, is_dev)
+    pass
 
 
 async def _create_feedback_subtask_async(org_id: str, task: Task, subtasks: list[Subtask]) -> Subtask:
@@ -121,7 +123,6 @@ async def _create_feedback_subtask_async(org_id: str, task: Task, subtasks: list
         steps.append(step)
 
     feedback_subtask = Subtask(
-        order=len(subtasks) + 1,
         title="Address user feedback",
         steps=steps,
         status=SubtaskStatus.IN_PROGRESS,

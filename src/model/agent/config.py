@@ -1,6 +1,6 @@
 from typing_extensions import TypedDict
 
-from src.model.agent.response import TaskSummary
+from src.model.agent.response import TaskRequirements
 from src.model.app import Org
 from src.model.app.project import Project
 from src.model.app.task import Task
@@ -36,6 +36,11 @@ class AsyncConfig(TypedDict, total=False):
     Task model
     """
 
+    task_id: str
+    """
+    Task ID
+    """
+
     user_id: str
     """
     User ID
@@ -46,17 +51,12 @@ class AsyncConfig(TypedDict, total=False):
     User message
     """
 
-    user_turns: int
-    """
-    Number of messages the user has sent
-    """
-
     is_dev: bool
     """
     Boolean to tell whether the request is for development
     """
 
-    task_summary: TaskSummary
+    task_requirements: TaskRequirements
     """
-    Summary of the task
+    Requirements of the task
     """

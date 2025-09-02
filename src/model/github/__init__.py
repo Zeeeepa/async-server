@@ -2,6 +2,7 @@ from src.model.github.content import Content
 from src.model.github.installation import Installation
 from src.model.github.issue import Issue
 from src.model.github.issue_comment import IssueComment
+from src.model.github.issue_comment_event import IssueCommentEvent, IssueCommentEventAction
 from src.model.github.issues_event import IssuesEvent, IssuesEventAction
 from src.model.github.organization import Organization
 from src.model.github.pull_request import PullRequest, PullRequestFile
@@ -14,6 +15,8 @@ __all__ = [
     "Content",
     "Installation",
     "IssueComment",
+    "IssueCommentEvent",
+    "IssueCommentEventAction",
     "Issue",
     "IssuesEvent",
     "IssuesEventAction",

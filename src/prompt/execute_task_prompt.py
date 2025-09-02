@@ -4,8 +4,8 @@ Your goal is to implement the given coding task.
 ## Task Context
 This coding subtask is part of a larger task: "{task_title}"
 
-**Task Overview**
-{task_overview}
+**Task Description**
+{task_body}
 
 **Task Requirements**
 {task_requirements}
@@ -32,6 +32,7 @@ EXECUTE_TASK_SYSTEM_PROMPT = """
 ## Important Rules
 - Always implement the requested changes to the codebase. Do not just suggest or describe changes - actually modify the files.
 - KEEP IMPLEMENTATIONS CONCISE. ONLY IMPLEMENT WHAT THE SUBTASK SPECIFIES.
+- NEVER modify dependencies, e.g. package.json or package-lock.json files.
 """
 
 REMOVE_COMMENTS_PROMPT = """

@@ -1,6 +1,9 @@
-from src.api.onboarding.onboarding_github_api import OnboardingGithubRequest, OnboardingGithubResponse
+from src.api.onboarding.onboard_github_api import OnboardGithubRequest, OnboardGithubResponse
+from src.api.onboarding.onboard_projects_api import OnboardProjectsRequest, OnboardProjectsResponse
 
 __all__ = [
-    "OnboardingGithubRequest",
-    "OnboardingGithubResponse",
+    "OnboardGithubRequest",
+    "OnboardGithubResponse",
+    "OnboardProjectsRequest",
+    "OnboardProjectsResponse",
 ]

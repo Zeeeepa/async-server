@@ -7,10 +7,11 @@ from typing import Optional
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
+from src.github.handle_issue_comment import handle_issue_comment_async
 from src.github.handle_issues import handle_issues_async
 from src.github.handle_pull_request import handle_pull_request_async
 from src.github.handle_push import handle_push_async
-from src.model.github import IssuesEvent, PullRequestEvent, PushEvent
+from src.model.github import IssueCommentEvent, IssuesEvent, PullRequestEvent, PushEvent
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()
@@ -33,6 +34,8 @@ async def handle_github_events_async(
     match x_github_event:
         case "issues":
             await handle_issues_async(IssuesEvent(**data))
+        case "issue_comment":
+            await handle_issue_comment_async(IssueCommentEvent(**data))
         case "pull_request":
             await handle_pull_request_async(PullRequestEvent(**data))
         case "push":

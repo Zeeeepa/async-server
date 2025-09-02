@@ -8,6 +8,7 @@ class Project(BaseModel):
     id: str = Field(default_factory=generate_id)
     name: str
     repo: str
+    default_branch: str = "main"
     description: str = ""
     overview: str = ""
     tree: str = ""
